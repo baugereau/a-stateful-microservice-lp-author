@@ -22,6 +22,9 @@ podman run -it -d --rm --network db --name db --env MARIADB_USER=manning --env M
 # podman run -it --rm --network db --name client-db docker.io/mariadb:latest mariadb -hdb -umanning -p
 # MariaDB [(none)]> \s
 # MariaDB [(none)]> \q
+podman run -it --rm -d -p 8090:80 --network db --name web -v ./client:/usr/share/nginx/html docker.io/nginx:alpine
+podman network inspect db # get the gateway IP of the created network to pass as environment variable to the order container
+podman run --rm -d --network db --name order --env  "SALES_TAX_RATE_SERVICE=http://10.89.0.1:8001/find_rate" --env "DATABASE_URL=mysql://manning:WasmEdge@10.89.0.1:3306/umet" docker.io/baugereau/order_management.wasm:latest
 
 TODO: 
 * find how to manage the ip address of the db for connection from the wasm binary (passed as env variable); manual setting as it would be handled in a better way in the next module with dapr
