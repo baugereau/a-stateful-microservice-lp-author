@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.84 AS buildbase
+FROM docker.io/library/rust:1.87 AS buildbase
 WORKDIR /src
 RUN apt-get update && apt-get install -y git clang
 RUN rustup target add wasm32-wasip1
