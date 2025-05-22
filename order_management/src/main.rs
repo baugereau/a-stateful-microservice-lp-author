@@ -37,6 +37,7 @@ struct Order {
     subtotal: f32,
     shipping_address: String,
     shipping_zip: String,
+    shipping_cost: f32,
     total: f32,
 }
 
@@ -48,6 +49,7 @@ impl Order {
         subtotal: f32,
         shipping_address: String,
         shipping_zip: String,
+        shipping_cost: f32,
         total: f32,
     ) -> Self {
         Self {
@@ -57,6 +59,7 @@ impl Order {
             subtotal,
             shipping_address,
             shipping_zip,
+            shipping_cost,
             total,
         }
     }
@@ -79,7 +82,7 @@ async fn handle_request(req: Request<Body>, pool: Pool) -> Result<Response<Body>
         (&Method::GET, "/init") => {
             let mut conn = pool.get_conn().await.unwrap();
             // "DROP TABLE IF EXISTS orders;".ignore(&mut conn).await?;
-            "CREATE TABLE IF NOT EXISTS orders (order_id INT, product_id INT, quantity INT, subtotal FLOAT, shipping_address VARCHAR(1024), shipping_zip VARCHAR(32), total FLOAT);".ignore(&mut conn).await?;
+            "CREATE TABLE IF NOT EXISTS orders (order_id INT NOT NULL AUTO_INCREMENT, product_id INT, quantity INT, subtotal FLOAT, shipping_address VARCHAR(1024), shipping_zip VARCHAR(32), shipping_cost FLOAT, total FLOAT, PRIMARY KEY (order_id));".ignore(&mut conn).await?;
             drop(conn);
             Ok(response_build("{\"status\":true}"))
         }
@@ -99,16 +102,16 @@ async fn handle_request(req: Request<Body>, pool: Pool) -> Result<Response<Body>
                 let rate = rate_resp.text()
                     .await?
                     .parse::<f32>()?;
-                order.total = order.subtotal * (1.0 + rate);
+                order.total = order.subtotal * (1.0 + rate) + order.shipping_cost;
                 
-                "INSERT INTO orders (order_id, product_id, quantity, subtotal, shipping_address, shipping_zip, total) VALUES (:order_id, :product_id, :quantity, :subtotal, :shipping_address, :shipping_zip, :total)"
+                "INSERT INTO orders (product_id, quantity, subtotal, shipping_address, shipping_zip, shipping_cost, total) VALUES (:product_id, :quantity, :subtotal, :shipping_address, :shipping_zip, :shipping_cost, :total)"
                     .with(params! {
-                        "order_id" => order.order_id,
                         "product_id" => order.product_id,
                         "quantity" => order.quantity,
                         "subtotal" => order.subtotal,
                         "shipping_address" => &order.shipping_address,
                         "shipping_zip" => &order.shipping_zip,
+                        "shipping_cost" => order.shipping_cost,
                         "total" => order.total,
                     })
                     .ignore(&mut conn)
@@ -130,7 +133,7 @@ async fn handle_request(req: Request<Body>, pool: Pool) -> Result<Response<Body>
 
             let orders = "SELECT * FROM orders"
                 .with(())
-                .map(&mut conn, |(order_id, product_id, quantity, subtotal, shipping_address, shipping_zip, total)| {
+                .map(&mut conn, |(order_id, product_id, quantity, subtotal, shipping_address, shipping_zip, shipping_cost, total)| {
                     Order::new(
                         order_id,
                         product_id,
@@ -138,6 +141,7 @@ async fn handle_request(req: Request<Body>, pool: Pool) -> Result<Response<Body>
                         subtotal,
                         shipping_address,
                         shipping_zip,
+                        shipping_cost,
                         total,
                     )},
                 ).await?;
