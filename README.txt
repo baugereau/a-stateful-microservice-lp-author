@@ -44,3 +44,5 @@ curl http://localhost:8003/orders
 5. Use the mysql command to create a new username, password, and empty database. Restart the microservices to test and verify that they now save data into the new database.
 # This was performed above when starting the db container.
 
+6. GitHub Actions script.
+I have no intend to perform tests through GitHub Actions; I'm skipping this step.
